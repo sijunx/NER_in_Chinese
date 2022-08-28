@@ -1,0 +1,6 @@
+# Created by .ignore support plugin (hsz.mobi)
+data/
+.model
+*.model
+model/命名实体识别_中文02.model
+*.model
