@@ -1,31 +1,10 @@
 import torch
-from datasets import load_dataset, load_from_disk
-from transformers import AutoTokenizer
 
-#加载分词器
+from MyCollateFn import collate_fn
 from MyDataset import Dataset
-from MyModel import Model
 from transformers import AdamW
 
-tokenizer = AutoTokenizer.from_pretrained('hfl/rbt6')
-
-print(tokenizer)
-
-#分词测试
-tokenizer.batch_encode_plus(
-    [[
-        '海', '钓', '比', '赛', '地', '点', '在', '厦', '门', '与', '金', '门', '之', '间',
-        '的', '海', '域', '。'
-    ],
-     [
-         '这', '座', '依', '山', '傍', '水', '的', '博', '物', '馆', '由', '国', '内', '一',
-         '流', '的', '设', '计', '师', '主', '持', '设', '计', '，', '整', '个', '建', '筑',
-         '群', '精', '美', '而', '恢', '宏', '。'
-     ]],
-    truncation=True,
-    padding=True,
-    return_tensors='pt',
-    is_split_into_words=True)
+from MyTokenizer import tokenizer
 
 dataset = Dataset('train')
 
@@ -35,37 +14,7 @@ print("len(dataset):", len(dataset))
 print("tokens:", tokens)
 print("labels:", labels)
 
-#数据整理函数
-def collate_fn(data):
-    tokens = [i[0] for i in data]
-    labels = [i[1] for i in data]
-
-    inputs = tokenizer.batch_encode_plus(tokens,
-                                         truncation=True,
-                                         padding=True,
-                                         return_tensors='pt',
-                                         is_split_into_words=True)
-
-    lens = inputs['input_ids'].shape[1]
-
-    # for i in range(len(labels)):
-    #     labels[i] = [8] + labels[i]
-    #     labels[i] += [8] * lens
-    #     labels[i] = labels[i][:lens]
-
-    for i in range(len(labels)):
-        labels[i] = [7] + labels[i]
-        labels[i] += [7]*lens
-        labels[i] = labels[i][:lens]
-    #     print("labels[i]:", labels[i])
-    #     print("tokens[i]:", tokens[i])
-    #
-    # print("len(labels):", len(labels))
-
-    return inputs, torch.LongTensor(labels)
-
-
-#数据加载器
+# 数据加载器
 loader = torch.utils.data.DataLoader(dataset=dataset,
                                      batch_size=16,
                                      # batch_size=1,
@@ -73,7 +22,7 @@ loader = torch.utils.data.DataLoader(dataset=dataset,
                                      shuffle=True,
                                      drop_last=True)
 
-#查看数据样例
+# 查看数据样例
 for i, (inputs, labels) in enumerate(loader):
     break
 
@@ -85,22 +34,22 @@ for k, v in inputs.items():
     print(k, v.shape)
 
 
-#对计算结果和label变形,并且移除pad
+# 对计算结果和label变形,并且移除pad
 def reshape_and_remove_pad(outs, labels, attention_mask):
-    #变形,便于计算loss
-    #todo:这里的8是什么含义？没懂！！！
-    #[b, lens, 8] -> [b*lens, 8]
+    # 变形,便于计算loss
+    # todo:这里的8是什么含义？没懂！！！
+    # [b, lens, 8] -> [b*lens, 8]
     # print("outs.shape:", outs.shape)
     outs = outs.reshape(-1, 8)
     # print("outs[0]:", outs[0])
 
-    #[b, lens] -> [b*lens]
+    # [b, lens] -> [b*lens]
     # print("labels.shape:", labels.shape)
     labels = labels.reshape(-1)
     # print("labels:", labels)
 
-    #忽略对pad的计算结果
-    #[b, lens] -> [b*lens - pad]
+    # 忽略对pad的计算结果
+    # [b, lens] -> [b*lens - pad]
     select = attention_mask.reshape(-1) == 1
     outs = outs[select]
     labels = labels[select]
@@ -108,17 +57,18 @@ def reshape_and_remove_pad(outs, labels, attention_mask):
     # print("labels.shape:", labels.shape)
     return outs, labels
 
+
 # reshape_and_remove_pad(torch.randn(2, 3, 7), torch.ones(2, 3), torch.ones(2, 3))
 
-#获取正确数量和总数
+# 获取正确数量和总数
 def get_correct_and_total_count(labels, outs):
-    #[b*lens, 8] -> [b*lens]
+    # [b*lens, 8] -> [b*lens]
     # print("outs[0]:", outs[0])
     outs = outs.argmax(dim=1)
     correct = (outs == labels).sum().item()
     total = len(labels)
 
-    #计算除了0以外元素的正确率,因为0太多了,包括的话,正确率很容易虚高
+    # 计算除了0以外元素的正确率,因为0太多了,包括的话,正确率很容易虚高
     select = labels != 0
     outs = outs[select]
     labels = labels[select]
@@ -131,16 +81,17 @@ def get_correct_and_total_count(labels, outs):
 # get_correct_and_total_count(torch.ones(16), torch.randn(16, 7))
 
 
-
 # model = Model()
 
 model = torch.load('/Users/zard/Documents/GitHub/NER_in_Chinese/model/命名实体识别_中文02.model')
 
-#训练
-def train(epochs):
-    lr = 2e-5 if model.tuneing else 5e-4
 
-    #训练
+# 训练
+def train(epochs):
+    # lr = 2e-5 if model.tuneing else 5e-4
+    lr = 1e-5 if model.tuneing else 1e-4
+
+    # 训练
     optimizer = AdamW(model.parameters(), lr=lr)
     criterion = torch.nn.CrossEntropyLoss()
 
@@ -155,17 +106,17 @@ def train(epochs):
             # print("inputs['input_ids'].shape:", inputs['input_ids'].shape)
             # print("labels[0].len:", len(labels[0]))
 
-            #模型计算
-            #[b, lens] -> [b, lens, 8]
+            # 模型计算
+            # [b, lens] -> [b, lens, 8]
             outs = model(inputs)
 
-            #对outs和label变形,并且移除pad
-            #outs -> [b, lens, 8] -> [c, 8]
-            #labels -> [b, lens] -> [c]
+            # 对outs和label变形,并且移除pad
+            # outs -> [b, lens, 8] -> [c, 8]
+            # labels -> [b, lens] -> [c]
             outs, labels = reshape_and_remove_pad(outs, labels,
                                                   inputs['attention_mask'])
 
-            #梯度下降
+            # 梯度下降
             loss = criterion(outs, labels)
             loss.backward()
             optimizer.step()
@@ -194,8 +145,3 @@ def train(epochs):
 model.fine_tuneing(True)
 print(sum(p.numel() for p in model.parameters()) / 10000)
 train(20)
-
-
-
-
-

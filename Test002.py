@@ -1,29 +1,5 @@
 import torch
-
-# 测试
-from MyDataset import Dataset, tokenizer
-
-
-# 数据整理函数
-def collate_fn(data):
-    tokens = [i[0] for i in data]
-    labels = [i[1] for i in data]
-
-    inputs = tokenizer.batch_encode_plus(tokens,
-                                         truncation=True,
-                                         padding=True,
-                                         return_tensors='pt',
-                                         is_split_into_words=True)
-
-    lens = inputs['input_ids'].shape[1]
-
-    for i in range(len(labels)):
-        labels[i] = [7] + labels[i]
-        labels[i] += [7] * lens
-        labels[i] = labels[i][:lens]
-
-    return inputs, torch.LongTensor(labels)
-
+from MyTokenizer import tokenizer
 
 def predict():
     # model_load = torch.load('model/命名实体识别_中文.model')
@@ -50,7 +26,6 @@ def predict():
     #                                      return_tensors='pt',
     #                                      is_split_into_words=True)
 
-
     # tokenizer.decode(inputs['input_ids'][0])
 
     with torch.no_grad():
@@ -69,7 +44,7 @@ def predict():
         s = ''
         for j in range(index.shape[0]):
             if index[j] == 0:
-                s +='.'
+                s += '.'
                 continue
             s += tokenizer.decode(input_id[j])
         print("s:", s)
@@ -85,7 +60,6 @@ def predict():
         #         s += str(tag[j].item())
         #
         #     print(s)
-
 
     # for i in range(32):
     #     #移除pad
