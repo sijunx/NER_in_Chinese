@@ -41,6 +41,7 @@ def reshape_and_remove_pad(outs, labels, attention_mask):
     # todo:这里的8是什么含义？没懂！！！
     # 答：0：cls开始，7：sep结束
     # 'B-PER', 'I-PER', 'B-ORG', 'I-ORG', 'B-LOC', 'I-LOC'
+    #由于本模型是基于预训练模型基础之上的操作，因此，参数需要查询源头模型配置
     # [b, lens, 8] -> [b*lens, 8]
     # print("outs.shape:", outs.shape)
     outs = outs.reshape(-1, 8)
