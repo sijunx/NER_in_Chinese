@@ -30,7 +30,8 @@ def predict():
 
     with torch.no_grad():
         # [b, lens] -> [b, lens, 8] -> [b, lens]
-        outs = model_load(inputs).argmax(dim=2)
+        temp_result = model_load(inputs)
+        outs = temp_result.argmax(dim=2)
 
     print(outs)
     print("outs.shape[0]:", outs.shape[0])

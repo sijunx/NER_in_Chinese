@@ -39,6 +39,8 @@ for k, v in inputs.items():
 def reshape_and_remove_pad(outs, labels, attention_mask):
     # 变形,便于计算loss
     # todo:这里的8是什么含义？没懂！！！
+    # 答：0：cls开始，7：sep结束
+    # 'B-PER', 'I-PER', 'B-ORG', 'I-ORG', 'B-LOC', 'I-LOC'
     # [b, lens, 8] -> [b*lens, 8]
     # print("outs.shape:", outs.shape)
     outs = outs.reshape(-1, 8)
